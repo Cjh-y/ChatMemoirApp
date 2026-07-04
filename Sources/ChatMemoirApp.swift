@@ -130,7 +130,7 @@ struct PickScreen: View {
                             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                             .background(RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(si == i ? Color.accentColor : .clear, lineWidth: 2)))
-                            .contextMenu { Button("删除", role: .destructive) { bookToDelete = b.id } }.onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { si = i } }
+                            .contextMenu { Button("删除", role: .destructive) { bookToDelete = b.id; showDeleteAlert = true } }.onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { si = i } }
                         }
                         ForEach(Array(demos.enumerated()), id: \.offset) { i, d in
                             let idx = repo.books.count + i
@@ -162,6 +162,10 @@ struct PickScreen: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(si == nil ? 0.3 : 0.8)))
                 .disabled(si == nil).padding(.vertical, 24)
                 Spacer().frame(height: 40)
+            .alert("删除这本回忆录？", isPresented: $showDeleteAlert) {
+                Button("取消", role: .cancel) {}
+                Button("删除", role: .destructive) { if let id = bookToDelete { repo.deleteBook(id: id); bookToDelete = nil } }
+            } message: { Text("删除后将无法恢复。") }
             }
         }
     }
