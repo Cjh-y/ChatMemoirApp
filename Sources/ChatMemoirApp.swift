@@ -113,7 +113,7 @@ struct PickScreen: View {
     @ObservedObject var repo: Repository
     let onMemory: () -> Void
     let onPick: (Book) -> Void
-    @State private var si: Int?; @State private var bookToDelete: String?
+    @State private var si: Int?; @State private var bookToDelete: String?; @State private var showDeleteAlert = false
     var body: some View {
         PaperBg {
             VStack(spacing: 0) {
