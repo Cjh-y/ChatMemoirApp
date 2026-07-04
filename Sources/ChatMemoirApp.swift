@@ -52,7 +52,7 @@ enum AppPhase: Equatable { case welcome; case pick; case memory; case gen; case 
     var body: some Scene { WindowGroup {
         ZStack { switch phase {
         case .welcome: WelcomeView { phase = .pick }
-        case .pick:    PickView(demos: demos, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
+        case .pick:    PickView(demos: demos, memories: memories, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
         case .memory:  MemoryInputView(phase: $phase, book: $book, memories: $memories)
         case .gen:     GenView { phase = .reader }
         case .reader:  if let b = book { ReaderView(book: b) { phase = .pick } }
@@ -105,7 +105,7 @@ struct MemoryInputView: View {
 }
 
 struct PickView: View {
-    let demos: [Demo]
+    let demos: [Demo]; let memories: [MemoryItem]
     let onAddMemory: () -> Void
     let onPick: (Book) -> Void
     @State private var si: Int?
@@ -128,7 +128,7 @@ struct PickView: View {
                 }
                 Button { onAddMemory() } label: { HStack { Image(systemName:"plus.circle.fill").font(.title3); Text("添加你自己的回忆").font(.system(.body,design:.serif)) }.padding(.horizontal,32).padding(.vertical,12).background(RoundedRectangle(cornerRadius:10).fill(Color.accentColor.opacity(0.15))).overlay(RoundedRectangle(cornerRadius:10).stroke(Color.accentColor.opacity(0.3),lineWidth:1)) }
                 Button(si != nil ? "开始生成" : "请先选择一个故事") {
-                    if let i = si { onPick(demos[i].build()) }
+                    if let i = si { if i == -1 { onPick(StoryBuilder.build(title: "回信", subtitle: "", from: memories)) } else { onPick(demos[i].build()) } }
                 }
                 .font(.system(.body,design:.serif)).foregroundStyle(.white).padding(.horizontal,40).padding(.vertical,14)
                 .background(RoundedRectangle(cornerRadius:10).fill(Color.primary.opacity(si == nil ? 0.3 : 0.8)))
