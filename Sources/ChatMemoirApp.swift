@@ -118,8 +118,7 @@ struct ReaderView: View {
     let back: () -> Void
     @State private var idx = 0
     var body: some View {
-        ZStack {
-            Color(red:0.96,green:0.94,blue:0.90).ignoresSafeArea()
+        PaperBg { ZStack {
             VStack(spacing: 0) {
                 HStack {
                     Button{back()}label:{Image(systemName:"xmark.circle.fill").font(.title2).foregroundStyle(.secondary.opacity(0.5)).padding(12)}
@@ -136,13 +135,15 @@ struct ReaderView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
-        }
+        } }
     }
 }
 
 struct CoverCard: View {
-    let title: String; let sub: String; @State private var a = false
+    let title: String; let sub: String; @State private var a = false; @Environment(\.colorScheme) var cs
     var body: some View {
+        let bg = cs == .dark ? Color(red:0.12,green:0.11,blue:0.10) : Color(red:0.96,green:0.94,blue:0.90)
+        ZStack { bg.ignoresSafeArea()
         VStack(spacing: 24) {
             Spacer()
             Text(title).font(.system(.largeTitle,design:.serif)).fontWeight(.medium).multilineTextAlignment(.center)
@@ -150,24 +151,30 @@ struct CoverCard: View {
             Spacer()
             Text("一本聊天回忆录").font(.system(.caption,design:.serif)).foregroundStyle(.secondary.opacity(0.5)).padding(.bottom,40)
         }.padding(32).opacity(a ? 1 : 0).onAppear { withAnimation(.easeIn(duration:0.8)) { a = true } }
+        }
     }
 }
 
 struct PageCard: View {
-    let text: String; let chapter: String; @State private var a = false
+    let text: String; let chapter: String; @State private var a = false; @Environment(\.colorScheme) var cs
     var body: some View {
+        let bg = cs == .dark ? Color(red:0.12,green:0.11,blue:0.10) : Color(red:0.96,green:0.94,blue:0.90)
+        ZStack { bg.ignoresSafeArea()
         VStack(alignment:.leading, spacing: 20) {
             Text(chapter).font(.system(.caption,design:.serif)).foregroundStyle(.secondary.opacity(0.6)).textCase(.uppercase).tracking(2)
             Spacer()
             Text(text).font(.system(.title3,design:.serif)).lineSpacing(8)
             Spacer()
         }.padding(32).frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.leading).opacity(a ? 1 : 0).onAppear { withAnimation(.easeIn(duration:0.5)) { a = true } }
+        }
     }
 }
 
 struct EndCard: View {
-    @State private var a = false
+    @State private var a = false; @Environment(\.colorScheme) var cs
     var body: some View {
+        let bg = cs == .dark ? Color(red:0.12,green:0.11,blue:0.10) : Color(red:0.96,green:0.94,blue:0.90)
+        ZStack { bg.ignoresSafeArea()
         VStack(spacing: 32) {
             Spacer()
             Rectangle().fill(Color.primary.opacity(0.12)).frame(width:40,height:1)
@@ -175,5 +182,6 @@ struct EndCard: View {
             Text("就是你们的故事。").font(.system(.title3,design:.serif)).foregroundStyle(.secondary)
             Spacer()
         }.frame(maxWidth:.infinity).multilineTextAlignment(.center).opacity(a ? 1 : 0).onAppear { withAnimation(.easeIn(duration:0.8)) { a = true } }
+        }
     }
 }
