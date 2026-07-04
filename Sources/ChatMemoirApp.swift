@@ -47,13 +47,13 @@ struct Demo: Identifiable { let id: String; let title: String; let subtitle: Str
 enum AppPhase: Equatable { case welcome; case pick; case memory; case gen; case reader }
 @main struct ChatMemoirApp: App {
     @State private var phase: AppPhase = .welcome
-    @State private var book: Book? = nil
+    @State private var book: Book? = nil; @State private var memories: [MemoryItem] = []
     let demos: [Demo] = [.alice, .bob, .family]
     var body: some Scene { WindowGroup {
         ZStack { switch phase {
         case .welcome: WelcomeView { phase = .pick }
         case .pick:    PickView(demos: demos, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
-        case .memory:  MemoryInputView(phase: $phase, book: $book)
+        case .memory:  MemoryInputView(phase: $phase, book: $book, memories: $memories)
         case .gen:     GenView { phase = .reader }
         case .reader:  if let b = book { ReaderView(book: b) { phase = .pick } }
         } }
@@ -86,8 +86,7 @@ struct WelcomeView: View {
 
 // MARK: - Memory Input
 struct MemoryInputView: View {
-    @Binding var phase: AppPhase; @Binding var book: Book?
-    @State private var titleInput: String = ""; @State private var textInput: String = ""; @State private var memories: [MemoryItem] = []
+    @Binding var phase: AppPhase; @Binding var book: Book?; @Binding var memories: [MemoryItem]; @State private var titleInput: String = ""; @State private var textInput: String = ""
     var body: some View { PaperBg { VStack(spacing: 0) {
         HStack { Button("取消"){ phase = .pick }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(memories.isEmpty) }
         ScrollView { VStack(spacing: 16) {
