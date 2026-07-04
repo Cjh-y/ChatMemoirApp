@@ -54,7 +54,7 @@ enum AppPhase: Equatable { case welcome; case pick; case memory; case gen; case 
         case .welcome: WelcomeView { phase = .pick }
         case .pick:    PickView(demos: demos, memories: memories, customTitle: customTitle, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
         case .memory:  MemoryInputView(
-            onSave: { title, mems in memories.append(contentsOf: mems); if !title.isEmpty { customTitle = title } ; phase = .pick },
+            onSave: { title, mems in memories.append(contentsOf: mems); if !title.isEmpty { customTitle = title }; book = StoryBuilder.build(title: title, subtitle: "", from: memories); phase = .pick },
             onCancel: { phase = .pick }
         )
         case .gen:     GenView { phase = .reader }
