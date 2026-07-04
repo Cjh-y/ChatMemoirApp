@@ -87,10 +87,9 @@ struct WelcomeView: View {
 // MARK: - Memory Input
 struct MemoryInputView: View {
     @Binding var phase: AppPhase; @Binding var book: Book?
-    @State private var textInput: String = ""; @State private var memories: [MemoryItem] = []
-    @State private var titleInput: String = ""; @Environment(\.dismiss) var dismiss
+    @State private var titleInput: String = ""; @State private var textInput: String = ""; @State private var memories: [MemoryItem] = []
     var body: some View { PaperBg { VStack(spacing: 0) {
-        HStack { Button("取消"){dismiss()}.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(memories.isEmpty) }
+        HStack { Button("取消"){ phase = .pick }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(memories.isEmpty) }
         ScrollView { VStack(spacing: 16) {
             TextField("给这本回忆录取个名字", text: $titleInput).font(.system(.title3,design:.serif)).padding(.horizontal)
             VStack(alignment:.leading, spacing:8) {
@@ -103,7 +102,7 @@ struct MemoryInputView: View {
             }.padding(.horizontal) }
         } }
     } } }
-    func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); dismiss(); phase = .gen }
+    func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); phase = .gen }
 }
 
 struct PickView: View {
@@ -128,9 +127,7 @@ struct PickView: View {
                         }
                     }.padding(.horizontal, 32)
                 }
-                Button("添加回忆") { onAddMemory() }
-                .font(.system(.body, design: .serif)).foregroundStyle(.primary.opacity(0.7))
-                .padding(.vertical, 8).padding(.bottom, 8)
+                Button { onAddMemory() } label: { HStack { Image(systemName:"plus.circle.fill").font(.title3); Text("添加你自己的回忆").font(.system(.body,design:.serif)) }.padding(.horizontal,32).padding(.vertical,12).background(RoundedRectangle(cornerRadius:10).fill(Color.accentColor.opacity(0.15))).overlay(RoundedRectangle(cornerRadius:10).stroke(Color.accentColor.opacity(0.3),lineWidth:1)) }
                 Button(si != nil ? "开始生成" : "请先选择一个故事") {
                     if let i = si { onPick(demos[i].build()) }
                 }
