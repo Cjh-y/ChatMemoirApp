@@ -113,7 +113,7 @@ struct PickScreen: View {
     @ObservedObject var repo: Repository
     let onMemory: () -> Void
     let onPick: (Book) -> Void
-    @State private var si: Int?
+    @State private var si: Int?; @State private var bookToDelete: String?
     var body: some View {
         PaperBg {
             VStack(spacing: 0) {
@@ -121,6 +121,7 @@ struct PickScreen: View {
                 Text("选择或创建回忆录").font(.system(.title2, design: .serif)).fontWeight(.medium).padding(.bottom, 32)
                 ScrollView {
                     VStack(spacing: 16) {
+                        if repo.books.isEmpty && demos.isEmpty { EmptyStateView(onAdd: onMemory) }
                         ForEach(Array(repo.books.enumerated()), id: \.offset) { i, b in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(b.title).font(.system(.body, design: .serif)).fontWeight(.medium)
@@ -129,7 +130,7 @@ struct PickScreen: View {
                             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                             .background(RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(si == i ? Color.accentColor : .clear, lineWidth: 2)))
-                            .onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { si = i } }
+                            .contextMenu { Button("删除", role: .destructive) { bookToDelete = b.id } }.onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { si = i } }
                         }
                         ForEach(Array(demos.enumerated()), id: \.offset) { i, d in
                             let idx = repo.books.count + i
@@ -304,5 +305,20 @@ struct EndCard: View {
             Text("就是你们的故事。").font(.system(.title3, design: .serif)).foregroundStyle(.secondary)
             Spacer()
         }.frame(maxWidth: .infinity).multilineTextAlignment(.center).opacity(a ? 1 : 0).onAppear { withAnimation(.easeIn(duration: 0.8)) { a = true } } }
+    }
+}
+
+// MARK: - Empty State
+struct EmptyStateView: View {
+    let onAdd: () -> Void
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer().frame(height: 40)
+            Image(systemName: "book.closed").font(.system(size: 48)).foregroundStyle(.secondary.opacity(0.4))
+            Text("还没有回忆").font(.system(.title2, design: .serif)).foregroundStyle(.secondary)
+            Text("创建你的第一本回忆录。").font(.system(.body, design: .serif)).foregroundStyle(.secondary.opacity(0.7))
+            Button("创建回忆") { onAdd() }.font(.system(.body, design: .serif)).foregroundStyle(.white).padding(.horizontal, 32).padding(.vertical, 10).background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.8)))
+            Spacer().frame(height: 40)
+        }.frame(maxWidth: .infinity)
     }
 }
