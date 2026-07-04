@@ -115,6 +115,15 @@ struct PickView: View {
                 Spacer().frame(height:60); Text("选择一个故事").font(.system(.title2,design:.serif)).fontWeight(.medium).padding(.bottom,32)
                 ScrollView {
                     VStack(spacing: 16) {
+                        if !memories.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("我的回忆").font(.system(.body, design: .serif)).fontWeight(.medium)
+                                Text("\(memories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius:12).fill(.regularMaterial).overlay(RoundedRectangle(cornerRadius:12).stroke(si == -1 ? Color.accentColor : .clear, lineWidth: 2)))
+                            .onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { si = -1 } }
+                        }
                         ForEach(Array(demos.enumerated()), id: \.offset) { i, d in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(d.title).font(.system(.body,design:.serif)).fontWeight(.medium)
