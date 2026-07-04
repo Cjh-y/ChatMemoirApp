@@ -2,7 +2,111 @@ import SwiftUI; import Foundation
 
 // MARK: - Models
 struct MemoryItem: Identifiable, Codable { var id: String = UUID().uuidString; var type: String = "text"; var content: String; var date: Date = Date() }
-struct MemBook: Identifiable, Codable { var id: String = UUID().uuidString; var title: String; var memories: [MemoryItem]; var createdAt: Date = Date() }
+struct MemBook: Identifiable, Codable { var id: String = UUID().uuidString; var title: String; var memories: [MemoryItem]; var moments: [MemoryMoment] = []; var createdAt: Date = Date() }
+// MARK: - Memory Domain
+
+struct MemoryMessage: Codable { var sender: String; var text: String; var index: Int }
+
+struct MemoryConversation: Codable { var title: String; var participants: [String]; var messages: [MemoryMessage] }
+
+struct MemoryMoment: Identifiable, Codable { var id: String = UUID().uuidString; var type: String; var title: String; var evidence: [String]; var confidence: Double }
+
+
+
+// MARK: - Parser
+
+struct MemoryParser {
+
+    static func parse(text: String) -> MemoryConversation {
+
+        let lines = text.components(separatedBy: CharacterSet.newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+        var msgs: [MemoryMessage] = []; var parts = Set<String>()
+
+        for (i, line) in lines.enumerated() {
+
+            let comps = line.components(separatedBy: "：")
+
+            if comps.count >= 2 {
+
+                let sender = comps[0]; let content = comps.dropFirst().joined(separator: "：")
+
+                msgs.append(MemoryMessage(sender: sender, text: content, index: i))
+
+                parts.insert(sender)
+
+            } else {
+
+                msgs.append(MemoryMessage(sender: "未知", text: line, index: i))
+
+                parts.insert("未知")
+
+            }
+
+        }
+
+        return MemoryConversation(title: "对话", participants: Array(parts), messages: msgs)
+
+    }
+
+}
+
+
+
+// MARK: - Analyzer
+
+struct MemoryAnalyzer {
+
+    static func analyze(_ conv: MemoryConversation) -> [MemoryMoment] {
+
+        var moments: [MemoryMoment] = []
+
+        let msgs = conv.messages; guard !msgs.isEmpty else { return moments }
+
+        if let f = msgs.first { moments.append(MemoryMoment(type: "firstMessage", title: "第一条消息", evidence: [f.text], confidence: 1.0)) }
+
+        if let l = msgs.last, msgs.count > 1 { moments.append(MemoryMoment(type: "lastMessage", title: "最后一条消息", evidence: [l.text], confidence: 1.0)) }
+
+        var sc: [String:Int] = [:]; for m in msgs { sc[m.sender,default:0] += 1 }
+
+        if let top = sc.max(by: {$0.value<$1.value}) { moments.append(MemoryMoment(type:"mostActive", title:"最活跃: "+top.key, evidence:["发送了 "+String(top.value)+" 条消息"], confidence:0.95)) }
+
+        moments.append(MemoryMoment(type:"totalCount", title:"共 "+String(msgs.count)+" 条消息", evidence:["你们一共发送了 "+String(msgs.count)+" 条消息"], confidence:1.0))
+
+        let kw = ["庆祝","恭喜","快乐","开心","太好","好耶","棒","🎉","🥳","考试","考完","通过","吃","火锅"]
+
+        let cms = msgs.filter { m in kw.contains(where: { m.text.contains($0) }) }
+
+        if !cms.isEmpty { moments.append(MemoryMoment(type:"celebration", title:"值得庆祝的时刻", evidence:cms.prefix(5).map{$0.text}, confidence:0.85)) }
+
+        var rc = 0; for i in 1..<msgs.count { if msgs[i].index - msgs[i-1].index <= 1 { rc += 1 } }
+
+        if rc >= 2 { moments.append(MemoryMoment(type:"rapidReply", title:"密集对话", evidence:["你们有 "+String(rc)+" 次快速回复"], confidence:0.8)) }
+
+        return moments
+
+    }
+
+}
+
+
+
+// MARK: - StoryBuilder for Moments
+
+struct StoryBuilder2 {
+
+    static func build(title: String, subtitle: String, from moments: [MemoryMoment]) -> Book {
+
+        let pages = moments.map { m in "[" + m.type + "] " + m.title + "\n" + m.evidence.joined(separator: "\n") }
+
+        return Book(title: title, subtitle: subtitle, chapters: [Chap(title: "我们的故事", pages: pages)])
+
+    }
+
+}
+
+
+
 struct Book: Identifiable { let id = UUID().uuidString; let title: String; let subtitle: String; let chapters: [Chap] }
 struct Chap: Identifiable { let id = UUID().uuidString; let title: String; let pages: [String] }
 struct Demo: Identifiable { let id: String; let title: String; let subtitle: String; let desc: String
@@ -40,6 +144,18 @@ struct StoryBuilder {
         load()
     }
     func createBook(title: String, memories: [MemoryItem]) {
+        books.append(b)
+        save()
+        DispatchQueue.main.async { [weak self] in
+            let allText = memories.map { $0.content }.joined(separator: "\n")
+            let conv = MemoryParser.parse(text: allText)
+            let moments = MemoryAnalyzer.analyze(conv)
+            if var idx = self?.books.firstIndex(where: { $0.id == b.id }) {
+                self?.books[idx].moments = moments
+                self?.save()
+            }
+        }
+    }
         let b = MemBook(title: title, memories: memories)
         books.append(b); save()
     }
@@ -151,7 +267,7 @@ struct PickScreen: View {
                     if let i = si {
                         if i < repo.books.count {
                             let b = repo.books[i]
-                            onPick(StoryBuilder.build(title: b.title, subtitle: "", from: b.memories))
+                            onPick(b.moments.isEmpty ? StoryBuilder.build(title: b.title, subtitle: "", from: b.memories) : StoryBuilder2.build(title: b.title, subtitle: "", from: b.moments))
                         } else {
                             onPick(demos[i - repo.books.count].build())
                         }
