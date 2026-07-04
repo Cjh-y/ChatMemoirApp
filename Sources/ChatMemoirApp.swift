@@ -1,6 +1,32 @@
-import SwiftUI
+import SwiftUI; import PhotosUI
 
 struct Book: Identifiable { let id = UUID().uuidString; let title: String; let subtitle: String; let chapters: [Chap] }
+
+// MARK: - AI Engine
+protocol AIProvider: Sendable { var name: String { get }; func analyze(_ items: [String]) async -> AIResult }
+struct AIResult: Sendable { let topics: [String]; let emotions: [String:Double]; let suggestedTitles: [String] }
+struct MockProvider: AIProvider { let name = "Mock"
+    func analyze(_ items: [String]) async -> AIResult { try? await Task.sleep(for: .seconds(0.3)); return AIResult(topics:["日常"],emotions:["warm":0.8],suggestedTitles:["我们的故事"]) }
+}
+final class AIEngine: @unchecked Sendable { static let shared = AIEngine(); private var provider: AIProvider = MockProvider()
+    func setProvider(_ p: AIProvider) { provider = p }
+    func analyze(_ items: [String]) async -> AIResult { (try? await provider.analyze(items)) ?? AIResult(topics:[],emotions:[:],suggestedTitles:[]) }
+}
+
+// MARK: - Memory Model
+struct MemoryItem: Identifiable, Sendable { let id = UUID().uuidString; let type: MemType; let content: String; let date: Date
+    enum MemType: String, Sendable { case text; case sample }
+}
+
+// MARK: - Story Builder
+struct StoryBuilder {
+    static func build(title: String, subtitle: String, from items: [MemoryItem]) -> Book {
+        let sorted = items.sorted { $0.date < $1.date }
+        let pages: [String] = sorted.map { let df = DateFormatter(); df.dateFormat = "yyyy年M月d日"; return df.string(from: $0.date) + "\\n" + $0.content }
+        return Book(title: title, subtitle: subtitle, chapters: [Chap(title: "我们的故事", pages: pages)])
+    }
+}
+
 struct Chap: Identifiable { let id = UUID().uuidString; let title: String; let pages: [String] }
 struct Demo: Identifiable { let id: String; let title: String; let subtitle: String; let desc: String
     func build() -> Book {
@@ -18,7 +44,7 @@ struct Demo: Identifiable { let id: String; let title: String; let subtitle: Str
     static let family = Demo(id:"family",title:"我们的家",subtitle:"群聊记忆",desc:"一家四口的群聊。")
 }
 
-enum AppPhase: Equatable { case welcome; case pick; case gen; case reader }
+enum AppPhase: Equatable { case welcome; case pick; case memory; case gen; case reader }
 @main struct ChatMemoirApp: App {
     @State private var phase: AppPhase = .welcome
     @State private var book: Book? = nil
@@ -26,7 +52,8 @@ enum AppPhase: Equatable { case welcome; case pick; case gen; case reader }
     var body: some Scene { WindowGroup {
         ZStack { switch phase {
         case .welcome: WelcomeView { phase = .pick }
-        case .pick:    PickView(demos: demos) { b in book = b; phase = .gen }
+        case .pick:    PickView(demos: demos, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
+        case .memory:  MemoryInputView(phase: $phase, book: $book)
         case .gen:     GenView { phase = .reader }
         case .reader:  if let b = book { ReaderView(book: b) { phase = .pick } }
         } }
@@ -56,8 +83,32 @@ struct WelcomeView: View {
     }
 }
 
+
+// MARK: - Memory Input
+struct MemoryInputView: View {
+    @Binding var phase: AppPhase; @Binding var book: Book?
+    @State private var textInput: String = ""; @State private var memories: [MemoryItem] = []
+    @State private var titleInput: String = ""; @Environment(\.dismiss) var dismiss
+    var body: some View { PaperBg { VStack(spacing: 0) {
+        HStack { Button("取消"){dismiss()}.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(memories.isEmpty) }
+        ScrollView { VStack(spacing: 16) {
+            TextField("给这本回忆录取个名字", text: $titleInput).font(.system(.title3,design:.serif)).padding(.horizontal)
+            VStack(alignment:.leading, spacing:8) {
+                Text("粘贴聊天内容").font(.caption).foregroundStyle(.secondary)
+                TextEditor(text: $textInput).frame(minHeight:120).padding(8).background(RoundedRectangle(cornerRadius:8).fill(.regularMaterial)).scrollContentBackground(.hidden)
+                Button("添加这段聊天") { let t = textInput.trimmingCharacters(in:.whitespacesAndNewlines); if !t.isEmpty { memories.append(MemoryItem(type:.text, content:t, date:Date())); textInput = "" } }.font(.caption).foregroundStyle(.blue).disabled(textInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+            }.padding(.horizontal)
+            if !memories.isEmpty { VStack(alignment:.leading, spacing:4) { Text("已添加 \(memories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
+                ForEach(Array(memories.enumerated()), id:\.offset) { i, m in HStack { Text(m.content.prefix(40)).font(.caption).lineLimit(1); Spacer(); Button{memories.remove(at:i)}label:{Image(systemName:"trash").font(.caption).foregroundStyle(.red)} }.padding(8).background(RoundedRectangle(cornerRadius:6).fill(.regularMaterial)) }
+            }.padding(.horizontal) }
+        } }
+    } } }
+    func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); dismiss(); phase = .gen }
+}
+
 struct PickView: View {
     let demos: [Demo]
+    let onAddMemory: () -> Void
     let onPick: (Book) -> Void
     @State private var si: Int?
     var body: some View {
@@ -77,6 +128,9 @@ struct PickView: View {
                         }
                     }.padding(.horizontal, 32)
                 }
+                Button("添加回忆") { onAddMemory() }
+                .font(.system(.body, design: .serif)).foregroundStyle(.primary.opacity(0.7))
+                .padding(.vertical, 8).padding(.bottom, 8)
                 Button(si != nil ? "开始生成" : "请先选择一个故事") {
                     if let i = si { onPick(demos[i].build()) }
                 }
