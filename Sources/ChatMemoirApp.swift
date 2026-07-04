@@ -53,7 +53,10 @@ enum AppPhase: Equatable { case welcome; case pick; case memory; case gen; case 
         ZStack { switch phase {
         case .welcome: WelcomeView { phase = .pick }
         case .pick:    PickView(demos: demos, memories: memories, customTitle: customTitle, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
-        case .memory:  MemoryInputView(phase: $phase, book: $book, memories: $memories, customTitle: $customTitle)
+        case .memory:  MemoryInputView(
+            onSave: { title, mems in memories = mems; customTitle = title; book = StoryBuilder.build(title: title, subtitle: "", from: mems); phase = .pick },
+            onCancel: { phase = .pick }
+        )
         case .gen:     GenView { phase = .reader }
         case .reader:  if let b = book { ReaderView(book: b) { phase = .pick } }
         } }
@@ -86,9 +89,9 @@ struct WelcomeView: View {
 
 // MARK: - Memory Input
 struct MemoryInputView: View {
-    @Binding var phase: AppPhase; @Binding var book: Book?; @Binding var memories: [MemoryItem]; @Binding var customTitle: String; @State private var editMemories: [MemoryItem] = []; @State private var titleInput: String = ""; @State private var textInput: String = ""
+    let onSave: (String, [MemoryItem]) -> Void; let onCancel: () -> Void; @State private var editMemories: [MemoryItem] = []; @State private var titleInput: String = ""; @State private var textInput: String = ""
     var body: some View { PaperBg { VStack(spacing: 0) {
-        HStack { Button("取消"){ phase = .pick }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(editMemories.isEmpty) }
+        HStack { Button("取消"){ onCancel() }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){ onSave(titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput, editMemories) }.padding().disabled(editMemories.isEmpty) }
         ScrollView { VStack(spacing: 16) {
             TextField("给这本回忆录取个名字", text: $titleInput).font(.system(.title3,design:.serif)).padding(.horizontal)
             VStack(alignment:.leading, spacing:8) {
@@ -101,8 +104,6 @@ struct MemoryInputView: View {
             }.padding(.horizontal) }
         } }
     } } }
-    func onLoad() { if editMemories.isEmpty && !memories.isEmpty { editMemories = memories }; if titleInput.isEmpty && !customTitle.isEmpty { titleInput = customTitle } }
-    func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); phase = .pick }
 }
 
 struct PickView: View {
