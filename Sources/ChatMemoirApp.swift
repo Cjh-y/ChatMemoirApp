@@ -94,7 +94,7 @@ struct MemoryInputView: View {
             VStack(alignment:.leading, spacing:8) {
                 Text("粘贴聊天内容").font(.caption).foregroundStyle(.secondary)
                 TextEditor(text: $textInput).frame(minHeight:120).padding(8).background(RoundedRectangle(cornerRadius:8).fill(.regularMaterial)).scrollContentBackground(.hidden)
-                Button("添加这段聊天") { let t = textInput.trimmingCharacters(in:.whitespacesAndNewlines); if !t.isEmpty { editMemories.append(MemoryItem(type:.text, content:t, date:Date())); textInput = "" } }.font(.caption).foregroundStyle(.blue).disabled(textInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                Button("添加这段聊天") { let t = textInput.trimmingCharacters(in:.whitespacesAndNewlines); if !t.isEmpty { editMemories.append(MemoryItem(type:.text, content:t, date:Date()))  } }.font(.caption).foregroundStyle(.blue).disabled(textInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
             }.padding(.horizontal)
             if !memories.isEmpty { VStack(alignment:.leading, spacing:4) { Text("已添加 \(memories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
                 ForEach(Array(editMemories.enumerated()), id:\.offset) { i, m in HStack { Text(m.content.prefix(40)).font(.caption).lineLimit(1); Spacer(); Button{editMemories.remove(at:i)}label:{Image(systemName:"trash").font(.caption).foregroundStyle(.red)} }.padding(8).background(RoundedRectangle(cornerRadius:6).fill(.regularMaterial)) }
