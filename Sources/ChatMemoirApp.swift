@@ -22,7 +22,7 @@ struct MemoryItem: Identifiable, Sendable { let id = UUID().uuidString; let type
 struct StoryBuilder {
     static func build(title: String, subtitle: String, from items: [MemoryItem]) -> Book {
         let sorted = items.sorted { $0.date < $1.date }
-        let pages: [String] = sorted.map { let df = DateFormatter(); df.dateFormat = "yyyy年M月d日"; return df.string(from: $0.date) + "\\n" + $0.content }
+        let pages: [String] = sorted.map { let df = DateFormatter(); df.dateFormat = "yyyy年M月d日"; return df.string(from: $0.date) + "\n" + $0.content }
         return Book(title: title, subtitle: subtitle, chapters: [Chap(title: "我们的故事", pages: pages)])
     }
 }
