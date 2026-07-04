@@ -87,7 +87,7 @@ struct WelcomeView: View {
 // MARK: - Memory Input
 struct MemoryInputView: View {
     @Binding var phase: AppPhase; @Binding var book: Book?; @Binding var memories: [MemoryItem]; @Binding var customTitle: String; @State private var editMemories: [MemoryItem] = []; @State private var titleInput: String = ""; @State private var textInput: String = ""
-    var body: some View { let _ = onLoad(); return PaperBg { VStack(spacing: 0) {
+    var body: some View { PaperBg { VStack(spacing: 0) {
         HStack { Button("取消"){ phase = .pick }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(editMemories.isEmpty) }
         ScrollView { VStack(spacing: 16) {
             TextField("给这本回忆录取个名字", text: $titleInput).font(.system(.title3,design:.serif)).padding(.horizontal)
@@ -96,7 +96,7 @@ struct MemoryInputView: View {
                 TextEditor(text: $textInput).frame(minHeight:120).padding(8).background(RoundedRectangle(cornerRadius:8).fill(.regularMaterial)).scrollContentBackground(.hidden)
                 Button("添加这段聊天") { let t = textInput.trimmingCharacters(in:.whitespacesAndNewlines); if !t.isEmpty { editMemories.append(MemoryItem(type:.text, content:t, date:Date()))  } }.font(.caption).foregroundStyle(.blue).disabled(textInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
             }.padding(.horizontal)
-            if !memories.isEmpty { VStack(alignment:.leading, spacing:4) { Text("已添加 \(memories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
+            if !editMemories.isEmpty { VStack(alignment:.leading, spacing:4) { Text("已添加 \(editMemories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
                 ForEach(Array(editMemories.enumerated()), id:\.offset) { i, m in HStack { Text(m.content.prefix(40)).font(.caption).lineLimit(1); Spacer(); Button{editMemories.remove(at:i)}label:{Image(systemName:"trash").font(.caption).foregroundStyle(.red)} }.padding(8).background(RoundedRectangle(cornerRadius:6).fill(.regularMaterial)) }
             }.padding(.horizontal) }
         } }
