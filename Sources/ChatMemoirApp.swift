@@ -101,7 +101,7 @@ struct MemoryInputView: View {
             }.padding(.horizontal) }
         } }
     } } }
-    func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); phase = .gen }
+    func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); phase = .pick }
 }
 
 struct PickView: View {
