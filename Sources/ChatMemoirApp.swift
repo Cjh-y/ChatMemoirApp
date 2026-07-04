@@ -47,13 +47,13 @@ struct Demo: Identifiable { let id: String; let title: String; let subtitle: Str
 enum AppPhase: Equatable { case welcome; case pick; case memory; case gen; case reader }
 @main struct ChatMemoirApp: App {
     @State private var phase: AppPhase = .welcome
-    @State private var book: Book? = nil; @State private var memories: [MemoryItem] = []
+    @State private var book: Book? = nil; @State private var customTitle: String = ""; @State private var memories: [MemoryItem] = []
     let demos: [Demo] = [.alice, .bob, .family]
     var body: some Scene { WindowGroup {
         ZStack { switch phase {
         case .welcome: WelcomeView { phase = .pick }
-        case .pick:    PickView(demos: demos, memories: memories, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
-        case .memory:  MemoryInputView(phase: $phase, book: $book, memories: $memories)
+        case .pick:    PickView(demos: demos, memories: memories, customTitle: customTitle, onAddMemory: { phase = .memory }, onPick: { b in book = b; phase = .gen })
+        case .memory:  MemoryInputView(phase: $phase, book: $book, memories: $memories, customTitle: $customTitle)
         case .gen:     GenView { phase = .reader }
         case .reader:  if let b = book { ReaderView(book: b) { phase = .pick } }
         } }
@@ -86,26 +86,27 @@ struct WelcomeView: View {
 
 // MARK: - Memory Input
 struct MemoryInputView: View {
-    @Binding var phase: AppPhase; @Binding var book: Book?; @Binding var memories: [MemoryItem]; @State private var titleInput: String = ""; @State private var textInput: String = ""
-    var body: some View { PaperBg { VStack(spacing: 0) {
-        HStack { Button("取消"){ phase = .pick }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(memories.isEmpty) }
+    @Binding var phase: AppPhase; @Binding var book: Book?; @Binding var memories: [MemoryItem]; @Binding var customTitle: String; @State private var editMemories: [MemoryItem] = []; @State private var titleInput: String = ""; @State private var textInput: String = ""
+    var body: some View { let _ = onLoad(); return PaperBg { VStack(spacing: 0) {
+        HStack { Button("取消"){ phase = .pick }.padding(); Spacer(); Text("添加回忆").font(.headline); Spacer(); Button("完成"){finish()}.padding().disabled(editMemories.isEmpty) }
         ScrollView { VStack(spacing: 16) {
             TextField("给这本回忆录取个名字", text: $titleInput).font(.system(.title3,design:.serif)).padding(.horizontal)
             VStack(alignment:.leading, spacing:8) {
                 Text("粘贴聊天内容").font(.caption).foregroundStyle(.secondary)
                 TextEditor(text: $textInput).frame(minHeight:120).padding(8).background(RoundedRectangle(cornerRadius:8).fill(.regularMaterial)).scrollContentBackground(.hidden)
-                Button("添加这段聊天") { let t = textInput.trimmingCharacters(in:.whitespacesAndNewlines); if !t.isEmpty { memories.append(MemoryItem(type:.text, content:t, date:Date())); textInput = "" } }.font(.caption).foregroundStyle(.blue).disabled(textInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                Button("添加这段聊天") { let t = textInput.trimmingCharacters(in:.whitespacesAndNewlines); if !t.isEmpty { editMemories.append(MemoryItem(type:.text, content:t, date:Date())); textInput = "" } }.font(.caption).foregroundStyle(.blue).disabled(textInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
             }.padding(.horizontal)
             if !memories.isEmpty { VStack(alignment:.leading, spacing:4) { Text("已添加 \(memories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
-                ForEach(Array(memories.enumerated()), id:\.offset) { i, m in HStack { Text(m.content.prefix(40)).font(.caption).lineLimit(1); Spacer(); Button{memories.remove(at:i)}label:{Image(systemName:"trash").font(.caption).foregroundStyle(.red)} }.padding(8).background(RoundedRectangle(cornerRadius:6).fill(.regularMaterial)) }
+                ForEach(Array(editMemories.enumerated()), id:\.offset) { i, m in HStack { Text(m.content.prefix(40)).font(.caption).lineLimit(1); Spacer(); Button{editMemories.remove(at:i)}label:{Image(systemName:"trash").font(.caption).foregroundStyle(.red)} }.padding(8).background(RoundedRectangle(cornerRadius:6).fill(.regularMaterial)) }
             }.padding(.horizontal) }
         } }
     } } }
+    func onLoad() { if editMemories.isEmpty && !memories.isEmpty { editMemories = memories }; if titleInput.isEmpty && !customTitle.isEmpty { titleInput = customTitle } }
     func finish() { let title = titleInput.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "回信" : titleInput; book = StoryBuilder.build(title:title, subtitle:"", from:memories); phase = .pick }
 }
 
 struct PickView: View {
-    let demos: [Demo]; let memories: [MemoryItem]
+    let demos: [Demo]; let memories: [MemoryItem]; let customTitle: String
     let onAddMemory: () -> Void
     let onPick: (Book) -> Void
     @State private var si: Int?
@@ -117,7 +118,7 @@ struct PickView: View {
                     VStack(spacing: 16) {
                         if !memories.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("我的回忆").font(.system(.body, design: .serif)).fontWeight(.medium)
+                                Text(customTitle.isEmpty ? "我的回忆" : customTitle).font(.system(.body, design: .serif)).fontWeight(.medium)
                                 Text("\(memories.count) 段回忆").font(.caption).foregroundStyle(.secondary)
                             }
                             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -137,7 +138,7 @@ struct PickView: View {
                 }
                 Button { onAddMemory() } label: { HStack { Image(systemName:"plus.circle.fill").font(.title3); Text("添加你自己的回忆").font(.system(.body,design:.serif)) }.padding(.horizontal,32).padding(.vertical,12).background(RoundedRectangle(cornerRadius:10).fill(Color.accentColor.opacity(0.15))).overlay(RoundedRectangle(cornerRadius:10).stroke(Color.accentColor.opacity(0.3),lineWidth:1)) }
                 Button(si != nil ? "开始生成" : "请先选择一个故事") {
-                    if let i = si { if i == -1 { onPick(StoryBuilder.build(title: "回信", subtitle: "", from: memories)) } else { onPick(demos[i].build()) } }
+                    if let i = si { if i == -1 { onPick(StoryBuilder.build(title: customTitle.isEmpty ? "回信" : customTitle, subtitle: "", from: memories)) } else { onPick(demos[i].build()) } }
                 }
                 .font(.system(.body,design:.serif)).foregroundStyle(.white).padding(.horizontal,40).padding(.vertical,14)
                 .background(RoundedRectangle(cornerRadius:10).fill(Color.primary.opacity(si == nil ? 0.3 : 0.8)))
