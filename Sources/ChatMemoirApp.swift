@@ -1,7 +1,4 @@
-import SwiftUI; import UIKit; import ObjectiveC
-
-private var _pk: UInt8 = 0
-extension UIViewController { var pi: Int { get { objc_getAssociatedObject(self, &_pk) as? Int ?? 0 } set { objc_setAssociatedObject(self, &_pk, newValue, .OBJC_ASSOCIATION_RETAIN) } } }
+import SwiftUI
 
 struct Book: Identifiable { let id = UUID().uuidString; let title: String; let subtitle: String; let chapters: [Chap] }
 struct Chap: Identifiable { let id = UUID().uuidString; let title: String; let pages: [String] }
@@ -121,32 +118,27 @@ struct ReaderView: View {
     let back: () -> Void
     @State private var idx = 0
     @Environment(\.colorScheme) var cs
-    private var pages: [AnyView] {
-        var p: [AnyView] = [AnyView(CoverCard(title: book.title, sub: book.subtitle))]
-        for ch in book.chapters { for pg in ch.pages { p.append(AnyView(PageCard(text: pg, chapter: ch.title))) } }
-        p.append(AnyView(EndCard()))
-        return p
-    }
     var body: some View {
         let bg = cs == .dark ? Color(red:0.12,green:0.11,blue:0.10) : Color(red:0.96,green:0.94,blue:0.90)
         ZStack { bg.ignoresSafeArea()
-            if !pages.isEmpty { PageCurlVC(pages: pages, cp: $idx) }
-            VStack { HStack { Button{back()}label:{Image(systemName:"xmark.circle.fill").font(.title2).foregroundStyle(.secondary.opacity(0.5)).padding(12)}; Spacer() }.padding(.top,8); Spacer() }
+            VStack(spacing: 0) {
+                HStack { Button{back()}label:{Image(systemName:"xmark.circle.fill").font(.title2).foregroundStyle(.secondary.opacity(0.5)).padding(12)}; Spacer() }.padding(.top,8)
+                TabView(selection: $idx) {
+                    CoverCard(title: book.title, sub: book.subtitle).tag(0)
+                    ForEach(Array(book.chapters.enumerated()), id: \.offset) { ci, ch in
+                        ForEach(Array(ch.pages.enumerated()), id: \.offset) { pi, pg in
+                            PageCard(text: pg, chapter: ch.title).tag(1 + ci * 100 + pi)
+                        }
+                    }
+                    EndCard().tag(9999)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+            }
         }
     }
 }
 
-struct PageCurlVC: UIViewControllerRepresentable { let pages: [AnyView]; @Binding var cp: Int
-    func makeCoordinator() -> C { C(self) }
-    func makeUIViewController(context: Context) -> UIPageViewController { let pvc = UIPageViewController(transitionStyle: .pageCurl, navigationOrientation: .horizontal, options: [.spineLocation: UIPageViewController.SpineLocation.mid.rawValue]); pvc.dataSource = context.coordinator; pvc.delegate = context.coordinator; pvc.isDoubleSided = true; if let f = host(0) { pvc.setViewControllers([f], direction: .forward, animated: false) }; return pvc }
-    func updateUIViewController(_ pvc: UIPageViewController, context: Context) {}
-    func host(_ i: Int) -> UIHostingController<AnyView>? { guard i >= 0, i < pages.count else { return nil }; let h = UIHostingController(rootView: pages[i]); h.view.backgroundColor = UIColor(red:0.96,green:0.94,blue:0.90,alpha:1); h.pi = i; return h }
-    class C: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate { let p: PageCurlVC; init(_ p: PageCurlVC) { self.p = p }
-        func pageViewController(_ pvc: UIPageViewController, viewControllerBefore vc: UIViewController) -> UIViewController? { p.host(vc.pi - 1) }
-        func pageViewController(_ pvc: UIPageViewController, viewControllerAfter vc: UIViewController) -> UIViewController? { p.host(vc.pi + 1) }
-        func pageViewController(_ pvc: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) { guard completed, let vc = pvc.viewControllers?.first else { return }; p.cp = vc.pi }
-    }
-}
+
 
 
 struct CoverCard: View {
