@@ -144,20 +144,12 @@ struct StoryBuilder {
         load()
     }
     func createBook(title: String, memories: [MemoryItem]) {
+        let allText = memories.map { $0.content }.joined(separator: "\n")
+        let conv = MemoryParser.parse(text: allText)
+        let moments = MemoryAnalyzer.analyze(conv)
+        let b = MemBook(title: title, memories: memories, moments: moments)
         books.append(b)
         save()
-        DispatchQueue.main.async { [weak self] in
-            let allText = memories.map { $0.content }.joined(separator: "\n")
-            let conv = MemoryParser.parse(text: allText)
-            let moments = MemoryAnalyzer.analyze(conv)
-            if var idx = self?.books.firstIndex(where: { $0.id == b.id }) {
-                self?.books[idx].moments = moments
-                self?.save()
-            }
-        }
-    }
-        let b = MemBook(title: title, memories: memories)
-        books.append(b); save()
     }
     func deleteBook(id: String) { books.removeAll { $0.id == id }; save() }
     private func save() { if let d = try? JSONEncoder().encode(books) { try? d.write(to: url) } }
@@ -278,12 +270,18 @@ struct PickScreen: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(si == nil ? 0.3 : 0.8)))
                 .disabled(si == nil).padding(.vertical, 24)
                 Spacer().frame(height: 40)
-            .alert("删除这本回忆录？", isPresented: $showDeleteAlert) {
-                Button("取消", role: .cancel) {}
-                Button("删除", role: .destructive) { if let id = bookToDelete { repo.deleteBook(id: id); bookToDelete = nil } }
-            } message: { Text("删除后将无法恢复。") }
             }
         }
+        .alert("删除这本回忆录？", isPresented: $showDeleteAlert) {
+            Button("取消", role: .cancel) { bookToDelete = nil }
+            Button("删除", role: .destructive) {
+                if let id = bookToDelete {
+                    repo.deleteBook(id: id)
+                    bookToDelete = nil
+                    si = nil
+                }
+            }
+        } message: { Text("删除后将无法恢复。") }
     }
 }
 
